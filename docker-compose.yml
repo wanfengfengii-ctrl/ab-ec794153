@@ -1,0 +1,33 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: concatemer-api:latest
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+    ports:
+      # Configurable host port, e.g. PORT=9090 docker compose up
+      - "${PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import json,urllib.request,sys; r=urllib.request.urlopen('http://127.0.0.1:8080/healthz',timeout=3); sys.exit(0 if r.status==200 and json.load(r)['status']=='ok' else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+
+  verify:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: concatemer-api:latest
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      API_URL: http://127.0.0.1:8080
+    network_mode: service:api
+    command: ["python", "scripts/verify.py"]
+    restart: "no"
